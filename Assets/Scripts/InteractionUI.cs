@@ -1,61 +1,85 @@
 using UnityEngine;
 using UnityEngine.UI;
+using System.Collections;
 
+/// <summary>
+/// 交互 UI 系統
+/// 負責顯示 "按 F 撿起" 的提示文字
+/// </summary>
 public class InteractionUI : MonoBehaviour
 {
-    // Prompt shown when the player can pick up the rock.
-    [SerializeField] private string promptMessage = "按 F 撿起";
-    [SerializeField] private Text promptText;
-
-    private void Awake()
+    [Header("UI 引用")]
+    [SerializeField] private Text promptText; // 提示文字
+    [SerializeField] private CanvasGroup canvasGroup; // Canvas Group（用於淡入淡出）
+    
+    [Header("動畫設置")]
+    [SerializeField] private float fadeDuration = 0.3f; // 淡入淡出時間
+    
+    private string promptMessage = "按 F 撿起"; // 提示文字內容
+    private Coroutine fadeCoroutine;
+    
+    private void Start()
     {
-        EnsurePromptText();
-        HidePrompt();
-    }
-
-    private void EnsurePromptText()
-    {
+        // 如果沒有分配，自動尋找
+        if (promptText == null)
+        {
+            promptText = GetComponentInChildren<Text>();
+        }
+        
+        if (canvasGroup == null)
+        {
+            canvasGroup = GetComponent<CanvasGroup>();
+            if (canvasGroup == null)
+            {
+                canvasGroup = gameObject.AddComponent<CanvasGroup>();
+            }
+        }
+        
+        // 初始化文字
         if (promptText != null)
         {
-            return;
+            promptText.text = promptMessage;
         }
-
-        var canvasObject = new GameObject("InteractionCanvas");
-        var canvas = canvasObject.AddComponent<Canvas>();
-        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        canvasObject.AddComponent<CanvasScaler>();
-        canvasObject.AddComponent<GraphicRaycaster>();
-
-        var textObject = new GameObject("PromptText");
-        textObject.transform.SetParent(canvasObject.transform, false);
-
-        promptText = textObject.AddComponent<Text>();
-        promptText.text = promptMessage;
-        promptText.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
-        promptText.fontSize = 32;
-        promptText.alignment = TextAnchor.MiddleCenter;
-        promptText.color = Color.white;
-
-        var rect = promptText.rectTransform;
-        rect.anchorMin = new Vector2(0.5f, 0f);
-        rect.anchorMax = new Vector2(0.5f, 0f);
-        rect.pivot = new Vector2(0.5f, 0f);
-        rect.anchoredPosition = new Vector2(0f, 30f);
-        rect.sizeDelta = new Vector2(420f, 60f);
-    }
-
-    public void ShowPrompt()
-    {
-        EnsurePromptText();
-        promptText.text = promptMessage;
-        promptText.enabled = true;
-    }
-
-    public void HidePrompt()
-    {
-        if (promptText != null)
+        
+        // 初始狀態：隱藏
+        if (canvasGroup != null)
         {
-            promptText.enabled = false;
+            canvasGroup.alpha = 0f;
         }
+    }
+    
+    /// <summary>
+    /// 顯示或隱藏提示
+    /// </summary>
+    public void ShowPrompt(bool show)
+    {
+        if (canvasGroup == null) return;
+        
+        // 停止之前的淡入淡出動畫
+        if (fadeCoroutine != null)
+        {
+            StopCoroutine(fadeCoroutine);
+        }
+        
+        // 啟動新的淡入淡出動畫
+        fadeCoroutine = StartCoroutine(FadePrompt(show ? 1f : 0f));
+    }
+    
+    /// <summary>
+    /// 淡入淡出動畫
+    /// </summary>
+    private IEnumerator FadePrompt(float targetAlpha)
+    {
+        float startAlpha = canvasGroup.alpha;
+        float elapsed = 0f;
+        
+        while (elapsed < fadeDuration)
+        {
+            elapsed += Time.deltaTime;
+            canvasGroup.alpha = Mathf.Lerp(startAlpha, targetAlpha, elapsed / fadeDuration);
+            yield return null;
+        }
+        
+        canvasGroup.alpha = targetAlpha;
     }
 }
